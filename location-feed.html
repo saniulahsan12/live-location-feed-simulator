@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Location Simulator</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        #status { font-weight: bold; color: green; }
+        #log { margin-top: 20px; padding: 10px; border: 1px solid #ddd; max-width: 400px; margin-left: auto; margin-right: auto; }
+    </style>
+</head>
+<body>
+
+    <h1>WebSocket Location Simulator</h1>
+    <p>Status: <span id="status">Connecting...</span></p>
+    <p>Sending location every 100ms...</p>
+    <div id="log"></div>
+
+    <script>
+        // Replace with your NestJS WebSocket server URL
+        const SERVER_URL = "http://localhost:3000"; // Replace with your server URL
+        // const SERVER_URL = "http://staging.amartrip.com"; // Replace with your server URL
+        // const TOKEN = "";
+        const TOKEN = ""; // Replace with a valid JWT token
+
+        // Connect to WebSocket server
+        const socket = io(SERVER_URL, {
+            auth: { token: TOKEN },
+            reconnection: true, // Enable automatic reconnection
+            reconnectionAttempts: Infinity, // Keep trying forever
+            reconnectionDelay: 2000, // Start with a 2-second delay
+            reconnectionDelayMax: 10000, // Maximum delay of 10 seconds
+            transports: ["websocket"]
+        });
+
+        // Update connection status
+        socket.on("connect", () => {
+            document.getElementById("status").innerText = "Connected ✅";
+        });
+
+        socket.on("disconnect", () => {
+            document.getElementById("status").innerText = "Disconnected ❌";
+        });
+
+        socket.on("reconnect_attempt", (attempt) => {
+            document.getElementById("status").innerText = `Reconnecting... (${attempt}) 🔄`;
+            console.log(`Reconnect attempt #${attempt}`);
+        });
+
+        socket.on("reconnect", (attempt) => {
+            document.getElementById("status").innerText = "Reconnected ✅";
+            console.log(`Successfully reconnected after ${attempt} attempts!`);
+        });
+
+        socket.on("reconnect_failed", () => {
+            document.getElementById("status").innerText = "Reconnection Failed ❌";
+            console.error("Socket reconnection failed!");
+        });
+
+
+        // Function to send random location
+        function sendLocation() {
+            const latitude = (Math.random() * 180 - 90).toFixed(6); // Random latitude
+            const longitude = (Math.random() * 360 - 180).toFixed(6); // Random longitude
+
+            socket.emit("location-updated", { longitude: parseFloat(longitude), latitude: parseFloat(latitude) }, (response) => {
+                console.log("Server Response:", response); // 👈 Log server response
+            });
+
+            const logEntry = `📍 Sent: Lat ${latitude}, Lng ${longitude}`;
+            document.getElementById("log").innerHTML = logEntry + "<br>" + document.getElementById("log").innerHTML;
+        }
+
+        // Send location every 5 seconds
+        setInterval(sendLocation, 100);
+    </script>
+
+</body>
+</html>
